@@ -34,7 +34,7 @@ src_filename  = ::File.basename(src_basename, '.tar.gz')
 
 remote_file "#{src_filepath}/#{src_basename}" do
   source node['openresty']['luarocks']['url']
-  checksum node['openresty']['luarocks']['checksum']
+  #checksum node['openresty']['luarocks']['checksum']
   backup false
 end
 

@@ -21,30 +21,31 @@
 #
 
 # Download data
-default['openresty']['source']['version']     = '1.9.15.1'
+default['openresty']['source']['version']     = '1.9.7.4'
 default['openresty']['source']['file_prefix'] = 'openresty'
-default['openresty']['source']['checksum']    = '75cf020144048c9013ee487cb48107a5b99de04a5a8fa83839c8b4c3aa4eb0db'
+default['openresty']['source']['checksum']    = 'aa5dcae035dda6e483bc1bd3d969d7113205dc2d0a3702ece0ad496c88a653c5'
 #use %{} for delayed interpolation
-default['openresty']['source']['name']        = "%{file_prefix}-%{version}"
-default['openresty']['source']['url']         = "http://agentzh.org/misc/nginx/%{name}.tar.gz"
+default['openresty']['source']['name']        = "%{file_prefix}*"
+#default['openresty']['source']['url']         = "http://agentzh.org/misc/nginx/%{name}.tar.gz"
+default['openresty']['source']['url']         = "https://github.com/openresty/openresty/tarball/master"
 
 # Directories
-default['openresty']['dir']                   = '/etc/nginx'
-default['openresty']['log_dir']               = '/var/log/nginx'
-default['openresty']['cache_dir']             = '/var/cache/nginx'
-default['openresty']['run_dir']               = '/var/run'
-default['openresty']['binary']                = '/usr/sbin/nginx'
-default['openresty']['pid']                   = "#{node['openresty']['run_dir']}/nginx.pid"
+default['openresty']['dir']                 = '/etc/nginx'
+default['openresty']['log_dir']             = '/var/log/nginx'
+default['openresty']['cache_dir']           = '/var/cache/nginx'
+default['openresty']['run_dir']             = '/var/run'
+default['openresty']['binary']              = '/usr/sbin/nginx'
+default['openresty']['pid']                 = "#{node['openresty']['run_dir']}/nginx.pid"
 
 # Namespaced attributes in order not to clash with the OHAI plugin
-default['openresty']['source']['conf_path']   = "#{node['openresty']['dir']}/nginx.conf"
-default['openresty']['source']['prefix']      = '/usr/share'
+default['openresty']['source']['conf_path'] = "#{node['openresty']['dir']}/nginx.conf"
+default['openresty']['source']['prefix']    = '/usr/share'
 
 ## Extract our source here and compile from this location.
 ## by default we use #{Chef::Config['file_cache_path']
 ## this allows something more specific since those may be transient and cause recompiles
-default['openresty']['source']['path']        = Chef::Config['file_cache_path'] || '/tmp'
-
+#default['openresty']['source']['path']    = Chef::Config['file_cache_path']||'/tmp'
+default['openresty']['source']['path']    = '/tmp'
 
 # Configure flags
 default['openresty']['source']['default_configure_flags'] = [
@@ -62,25 +63,43 @@ default['openresty']['source']['default_configure_flags'] = [
   "--http-scgi-temp-path=#{node['openresty']['cache_dir']}/scgi_temp",
   '--with-ipv6',
   '--with-md5-asm',
-  '--with-sha1-asm',
-  '--without-http_ssi_module',
-  '--without-mail_smtp_module',
-  '--without-mail_imap_module',
-  '--without-mail_pop3_module'
+  '--with-sha1-asm'
 ]
 
 # Default compile-in modules
+# enabled by default: http_rewrite_module & http_limit_conn_module
 default['openresty']['modules']         = [
-  'http_ssl_module',
-  'http_gzip_static_module',
-  'http_gunzip_module',
-  'http_stub_status_module',
-  'http_secure_link_module',
-  'http_realip_module',
-  'http_flv_module',
-  'http_mp4_module',
   'cache_purge_module',
-  'fair_module'
+  'fair_module',
+  'http_flv_module',
+  'http_gunzip_module',
+  'http_gzip_static_module',
+  'http_mp4_module',
+  'http_realip_module',
+  'http_secure_link_module',
+  'http_v2_module',
+  'http_ssl_module'
+]
+
+# Default compile-out modules
+default['openresty']['nomodules']         = [
+  'http_autoindex_module',
+  'http_browser_module',
+  'http-cache',
+  'http_geo_module',
+  'http_map_module',
+  'http_memcached_module',
+  'http_proxy_module',
+  'http_referer_module',
+  'http_scgi_module',
+  'http_split_clients_module',
+  'http_ssi_module',
+  'http_upstream_ip_hash_module',
+  'http_userid_module',
+  'http_uwsgi_module',
+  'mail_imap_module',
+  'mail_pop3_module',
+  'mail_smtp_module'
 ]
 
 # If you want to include extra-cookbook modules, just override this array, the will be included in the form
@@ -91,11 +110,11 @@ default['openresty']['configure_flags'] = Array.new
 # Configuration options
 case node['platform_family']
 when 'debian'
-  default['openresty']['user']        = 'www-data'
+  default['openresty']['user']        = 'www'
 when 'rhel', 'fedora'
   default['openresty']['user']        = 'nginx'
 else
-  default['openresty']['user']        = 'www-data'
+  default['openresty']['user']        = 'www'
 end
 
 default['openresty']['group']         = node['openresty']['user']

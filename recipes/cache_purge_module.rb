@@ -25,7 +25,7 @@ cpm_extract_path = "#{node['openresty']['source']['path']}/ngx_cache_purge/#{nod
 
 remote_file cpm_src_filepath do
   source node['openresty']['cache_purge']['url']
-  checksum node['openresty']['cache_purge']['checksum']
+  #checksum node['openresty']['cache_purge']['checksum']
   owner 'root'
   group 'root'
   mode 00644

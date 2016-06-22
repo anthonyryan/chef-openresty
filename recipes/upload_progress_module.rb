@@ -26,7 +26,7 @@ upm_extract_path = "#{node['openresty']['source']['path']}/nginx_upload_progress
 
 remote_file upm_src_filepath do
   source node['openresty']['upload_progress']['url']
-  checksum node['openresty']['upload_progress']['checksum']
+  #checksum node['openresty']['upload_progress']['checksum']
   owner 'root'
   group 'root'
   mode 00644

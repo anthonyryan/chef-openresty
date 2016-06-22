@@ -31,6 +31,8 @@ when 'rhel'
 end
 
 kernel_supports_aio = Chef::VersionConstraint.new('>= 2.6.22').include?(node['kernel']['release'].split('-').first.chomp('+'))
+#restart_on_update = node['openresty']['service']['restart_on_update'] ? ' && $( kill -QUIT `pgrep -U root nginx` || true )' : ''
+restart_on_update = node['openresty']['service']['restart_on_update'] ? '&& service nginx restart' : ''
 
 include_recipe 'build-essential'
 
@@ -40,14 +42,14 @@ directory node['openresty']['source']['path'] do
 end
 
 # use vars for these for delayed interpolation
-src_file_name=node['openresty']['source']['name'] % { file_prefix: node['openresty']['source']['file_prefix'], version: node['openresty']['source']['version'] }
+#src_file_name=node['openresty']['source']['name'] % { file_prefix: node['openresty']['source']['file_prefix'], version: node['openresty']['source']['version'] }
+src_file_name=node['openresty']['source']['name'] % { file_prefix: node['openresty']['source']['file_prefix'] }
 src_file_url=node['openresty']['source']['url'] % { name: src_file_name }
-src_filepath  = "#{node['openresty']['source']['path']}/#{src_file_name}.tar.gz"
-
+src_filepath = "#{node['openresty']['source']['path']}/#{node['openresty']['source']['file_prefix']}.tar.gz"
 
 packages = value_for_platform_family(
   ['rhel','fedora','amazon','scientific'] => ['openssl-devel', 'readline-devel', 'ncurses-devel', 'bzip2'],
-  'debian' => ['libperl-dev', 'libssl-dev', 'libreadline-dev', 'libncurses5-dev', 'bzip2']
+  'debian' => ['libperl-dev', 'libssl-dev', 'libreadline-dev', 'libncurses5-dev', 'bzip2', 'dos2unix', 'mercurial']
 )
 
 # Enable AIO for newer kernels
@@ -62,7 +64,7 @@ end
 
 remote_file src_file_url do
   source src_file_url
-  checksum node['openresty']['source']['checksum']
+  #checksum node['openresty']['source']['checksum']
   path src_filepath
   backup false
 end
@@ -79,7 +81,7 @@ if node['openresty']['custom_pcre']
     group 'root'
     mode 00644
     source node['openresty']['pcre']['url']
-    checksum node['openresty']['pcre']['checksum']
+    #checksum node['openresty']['pcre']['checksum']
     action :create
   end
   execute 'openresty-extract-pcre' do
@@ -104,8 +106,9 @@ end
 subrequests_file = ::File.join(
   ::File.dirname(src_filepath),
   src_file_name,
+  src_file_name,
   'bundle',
-  "nginx-#{node['openresty']['source']['version'].split('.').first(3).join('.')}",
+  "nginx-*",
   'src', 'http', 'ngx_http_request.h')
 
 if ::File.exists?(subrequests_file)
@@ -151,6 +154,10 @@ node['openresty']['modules'].each do |ngx_module|
   include_recipe "openresty::#{ngx_module}"
 end
 
+node['openresty']['nomodules'].each do |ngx_module|
+  node.run_state['openresty_configure_flags'] |= [ "--without-#{ngx_module}" ]
+end
+
 node['openresty']['extra_modules'].each do |ngx_module|
   include_recipe ngx_module
 end
@@ -169,11 +176,12 @@ ruby_block 'persist-openresty-configure-flags' do
   action :nothing
 end
 
+# Openresty apparently had this misconfigured, updated correct build process for latest revs (06202016) -antryan
 bash 'compile_openresty_source' do
   cwd ::File.dirname(src_filepath)
   code <<-EOH
-    tar zxf #{::File.basename(src_filepath)} -C #{::File.dirname(src_filepath)} &&
-    cd #{src_file_name} &&
+    tar --no-same-owner -zxvf #{src_filepath}
+    cd #{src_file_name} && make && cd #{src_file_name} &&
     #{subreq_opts}
     #{pcre_opts}
     ./configure #{node.run_state['openresty_configure_flags'].join(' ')} &&
@@ -200,8 +208,8 @@ bash 'compile_openresty_source' do
   end
 
   notifies :create, 'ruby_block[persist-openresty-configure-flags]'
-  if node['openresty']['service']['restart_on_update']
-    notifies :restart, node['openresty']['service']['resource']
+  if node['openresty']['restart_on_update']
+    notifies :restart, node['openresty']['resource']
   end
 end
 
